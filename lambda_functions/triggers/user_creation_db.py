@@ -13,10 +13,9 @@ S3_BUCKET = os.environ.get("S3_BUCKET", "one4allthings")
 def lambda_handler(event, context):
     """
     Cognito Post Confirmation Trigger.
-    Write record into DynamoDB when a user completes registration and verifies their email.
+    Write record into DynamoDB when a user completes registration and verifies their email. Also create S3 prefixes for the new user.
     """
     print(f"Cognito Event Triggered: {event['triggerSource']}")
-
 
     if event["triggerSource"] == "PostConfirmation_ConfirmSignUp":
         user_attributes = event["request"]["userAttributes"]
@@ -30,7 +29,6 @@ def lambda_handler(event, context):
         try:
             table = dynamodb.Table(USERS_TABLE)
             table.put_item(
-                
                 Item={
                     "user_id": user_id,
                     "email": email,
@@ -39,17 +37,18 @@ def lambda_handler(event, context):
                     "storage_used_bytes": 0,
                     "total_audio_duration": 0,
                 },
-                
                 ConditionExpression="attribute_not_exists(user_id)"
             )
             print(f"Successfully provisioned DynamoDB record for user: {user_id}")
             
             try:
-                folder_key = f"raw_audio/{user_id}/"
-                s3_client.put_object(Bucket=S3_BUCKET, Key=folder_key)
+                audio_folder = f"raw_audio/{user_id}/"
+                transcript_folder = f"transcript/{user_id}/"
+                s3_client.put_object(Bucket=S3_BUCKET, Key=audio_folder)
+                s3_client.put_object(Bucket=S3_BUCKET, Key=transcript_folder)
                 print(f"Successfully provisioned S3 directory pattern for user: {user_id}")
             except Exception as e:
-                print(f"Warning: Failed to create S3 prefix for {user_id}: {e}")
+                print(f"Warning: Failed to create S3 prefixes for {user_id}: {e}")
         
         except ClientError as e:
             if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
@@ -57,5 +56,4 @@ def lambda_handler(event, context):
             else:
                 print(f"Failed to insert user into DynamoDB: {e}")
                 
-
     return event
