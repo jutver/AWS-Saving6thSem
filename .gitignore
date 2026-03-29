@@ -1,0 +1,8 @@
+.venv
+.agent
+.env
+.DS_Store
+.vscode
+.idea
+docs
+fe
