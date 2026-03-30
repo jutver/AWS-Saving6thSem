@@ -44,6 +44,9 @@ def lambda_handler(event, context):
         if not all([file_name, file_type, duration]):
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Missing required fields: file_name, file_type, or duration'})
             }
             
@@ -102,5 +105,8 @@ def lambda_handler(event, context):
         print(f"Error generating presigned URL: {e}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': 'Could not generate upload URL and initialize DB record.'})
         }
