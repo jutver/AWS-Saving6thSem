@@ -36,9 +36,9 @@ def lambda_handler(event, context):
             
         # Parse Required Fields from FE Payload
         body = json.loads(event.get('body', '{}'))
-        file_name = body.get('file_name')
-        file_type = body.get('file_type')
-        duration = body.get('duration')
+        file_name = body.get('fileName')
+        file_type = body.get('contentType')
+        duration = body.get('durationSec')
         title = body.get('title', file_name)
 
         if not all([file_name, file_type, duration]):
