@@ -34,7 +34,8 @@ function extractAssistantText(res) {
   if (typeof res?.answer === "string") return res.answer;
   return "No answer returned from assistant API.";
 }
-const API_BASE = "https://ipiizwxzu2.execute-api.ap-southeast-1.amazonaws.com/dev";
+const API_BASE =
+  "http://voicesummarizer-1167047568.ap-southeast-2.elb.amazonaws.com";
 function parseTextOrJson(text) {
   try {
     return JSON.parse(text);
@@ -174,25 +175,25 @@ export default function AssistantPage() {
 
     const mapped = Array.isArray(items)
       ? items.flatMap((item, index) => {
-        const { thinking, answer } = splitThinkAndAnswer(
-          item.answer || "",
-          item.sources || [],
-        );
-        return [
-          {
-            id: item.id ? `q-${item.id}` : `q-${index}`,
-            role: "user",
-            message: item.question || "",
-          },
-          {
-            id: item.id ? `a-${item.id}` : `a-${index}`,
-            role: "assistant",
-            message: answer || "No answer returned from assistant.",
-            thinking,
-            sources: normalizeSources(item.sources || item.contexts || []),
-          },
-        ];
-      })
+          const { thinking, answer } = splitThinkAndAnswer(
+            item.answer || "",
+            item.sources || [],
+          );
+          return [
+            {
+              id: item.id ? `q-${item.id}` : `q-${index}`,
+              role: "user",
+              message: item.question || "",
+            },
+            {
+              id: item.id ? `a-${item.id}` : `a-${index}`,
+              role: "assistant",
+              message: answer || "No answer returned from assistant.",
+              thinking,
+              sources: normalizeSources(item.sources || item.contexts || []),
+            },
+          ];
+        })
       : [];
 
     setAssistantHistory(mapped);
@@ -297,11 +298,11 @@ export default function AssistantPage() {
         prev.map((msg) =>
           msg.id === tempAssistantMessage.id
             ? {
-              ...msg,
-              message: answer || "No answer returned from assistant.",
-              thinking,
-              isThinking: false,
-            }
+                ...msg,
+                message: answer || "No answer returned from assistant.",
+                thinking,
+                isThinking: false,
+              }
             : msg,
         ),
       );
@@ -312,11 +313,11 @@ export default function AssistantPage() {
         prev.map((msg) =>
           msg.id === tempAssistantMessage.id
             ? {
-              ...msg,
-              message: err.message || "Failed to get assistant response.",
-              thinking: "",
-              isThinking: false,
-            }
+                ...msg,
+                message: err.message || "Failed to get assistant response.",
+                thinking: "",
+                isThinking: false,
+              }
             : msg,
         ),
       );
@@ -438,10 +439,11 @@ export default function AssistantPage() {
                               </div>
 
                               <div
-                                className={`text-sm leading-6 text-slate-500 transition whitespace-pre-line ${expandedThinking[msg.id]
+                                className={`text-sm leading-6 text-slate-500 transition whitespace-pre-line ${
+                                  expandedThinking[msg.id]
                                     ? ""
                                     : "max-h-20 overflow-hidden blur-[3px]"
-                                  }`}
+                                }`}
                               >
                                 {msg.isThinking
                                   ? "Analyzing transcript, retrieving context, and preparing the response..."

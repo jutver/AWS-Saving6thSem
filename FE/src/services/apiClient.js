@@ -1,7 +1,7 @@
 import { getAuthToken } from "../utils/auth";
 
 const API_BASE_URL =
-  "https://ipiizwxzu2.execute-api.ap-southeast-1.amazonaws.com/dev";
+  "http://voicesummarizer-1167047568.ap-southeast-2.elb.amazonaws.com";
 
 async function request(path, options = {}) {
   const token = await getAuthToken();
@@ -29,8 +29,8 @@ async function request(path, options = {}) {
   if (!response.ok) {
     throw new Error(
       data?.error?.message ||
-      data?.message ||
-      `Request failed: ${response.status}`,
+        data?.message ||
+        `Request failed: ${response.status}`,
     );
   }
 

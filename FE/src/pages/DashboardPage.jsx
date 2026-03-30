@@ -6,7 +6,8 @@ import { getAuthToken } from "../utils/auth";
 import { getCurrentUser } from "aws-amplify/auth";
 
 import PageTransition from "../components/PageTransition";
-const API_BASE = "https://ipiizwxzu2.execute-api.ap-southeast-1.amazonaws.com/dev";
+const API_BASE =
+  "http://voicesummarizer-1167047568.ap-southeast-2.elb.amazonaws.com";
 
 export default function DashboardPage() {
   const fileInputRef = useRef(null);
@@ -335,10 +336,11 @@ export default function DashboardPage() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`rounded-[24px] border border-dashed bg-white px-6 py-8 shadow-sm transition-all duration-200 ${dragActive
+                className={`rounded-[24px] border border-dashed bg-white px-6 py-8 shadow-sm transition-all duration-200 ${
+                  dragActive
                     ? "border-[#5B4CF5] bg-indigo-50/40 shadow-md"
                     : "border-slate-200"
-                  }`}
+                }`}
               >
                 <div className="mx-auto max-w-3xl text-center">
                   <input
@@ -477,12 +479,13 @@ export default function DashboardPage() {
 
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${String(item.status).toLowerCase() === "completed"
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              String(item.status).toLowerCase() === "completed"
                                 ? "bg-emerald-500"
                                 : String(item.status).toLowerCase() === "failed"
                                   ? "bg-red-500"
                                   : "bg-amber-500"
-                              }`}
+                            }`}
                           />
                           {formatStatus(item.status)}
                         </span>
@@ -504,8 +507,8 @@ export default function DashboardPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
             <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
               <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
-                  <i className="bi bi-exclamation-triangle-fill text-2xl" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-yellow-100 shadow-inner">
+                  <i className="bi bi-exclamation-triangle-fill text-[34px] text-yellow-500 animate-pulse" />
                 </div>
 
                 <div>
