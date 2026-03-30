@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime
 
 s3_client = boto3.client('s3')
-dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION', 'ap-southeast-2'))
+dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION', 'ap-southeast-1'))
 
 S3_BUCKET = os.environ.get('S3_BUCKET', 'one4allthings')
 AUDIO_TABLE = os.environ.get('AUDIO_TABLE', 'AudioFiles')
@@ -38,10 +38,11 @@ def lambda_handler(event, context):
         body = json.loads(event.get('body', '{}'))
         file_name = body.get('fileName')
         file_type = body.get('contentType')
+        file_size = body.get('fileSize')
         duration = body.get('durationSec')
         title = body.get('title', file_name)
 
-        if not all([file_name, file_type, duration]):
+        if not all([file_name, file_type, file_size, duration]):
             return {
                 'statusCode': 400,
                 'headers': {
@@ -53,12 +54,11 @@ def lambda_handler(event, context):
         # Extract extension and generate safe Hash ID
         _, ext = os.path.splitext(file_name)
         hash_id = generate_hash(file_name)
-        new_file_name = f"{hash_id}{ext}"
         
         # Provision DB Record first
         table = dynamodb.Table(AUDIO_TABLE)
         
-        s3_audio_path = f"raw_audio/{user_id}/{new_file_name}"
+        s3_audio_path = f"raw_audio/{user_id}/{hash_id}"
         
         table.put_item(
             Item={
@@ -67,6 +67,7 @@ def lambda_handler(event, context):
                 "created_at": datetime.utcnow().isoformat() + "Z",
                 "duration": duration,
                 "file_type": file_type,
+                "file_size": file_size,
                 "file_name": file_name,        # Original File Name
                 "title": title,                # Display Name
                 "s3_audio": f"s3://{S3_BUCKET}/{s3_audio_path}",
@@ -95,9 +96,11 @@ def lambda_handler(event, context):
                 'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({
-                'upload_url': url,
-                'file_id': hash_id,
-                'renamed_file': new_file_name
+                'data': {
+                    'uploadUrl': url,
+                    'recordingId': hash_id,
+                    'fileUrl': f"s3://{S3_BUCKET}/{s3_audio_path}"
+                }
             })
         }
         

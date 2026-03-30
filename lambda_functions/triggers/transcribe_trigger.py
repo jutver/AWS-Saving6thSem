@@ -10,15 +10,21 @@ AUDIO_TABLE = os.environ.get('AUDIO_TABLE', 'AudioFiles')
 
 def lambda_handler(event, context):
     """
-    Triggered by S3 -> SQS when an audio file is uploaded to raw_audio/
+    Triggered by S3 or SQS when an audio file is uploaded to raw_audio/
     Initiates AWS Transcribe job and marks the DB AudioFiles stage as Transcribing.
     """
     for record in event['Records']:
         try:
-            body = json.loads(record['body'])
-            if 'Records' not in body: continue
+            s3_records = []
             
-            for s3_record in body['Records']:
+            # Support both Direct S3 Event Trigger AND SQS Wrapped Event Trigger
+            if 's3' in record:
+                s3_records = [record]
+            elif 'body' in record:
+                body = json.loads(record['body'])
+                s3_records = body.get('Records', [])
+
+            for s3_record in s3_records:
                 bucket_name = s3_record['s3']['bucket']['name']
                 key = urllib.parse.unquote_plus(s3_record['s3']['object']['key'])
                 

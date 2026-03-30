@@ -3,7 +3,7 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 import os
 
-DYNAMODB_REGION = os.environ.get("DYNAMODB_REGION", "ap-southeast-2")
+DYNAMODB_REGION = os.environ.get("DYNAMODB_REGION", "ap-southeast-1")
 dynamodb = boto3.resource("dynamodb", region_name=DYNAMODB_REGION)
 USERS_TABLE = "Users"
 
