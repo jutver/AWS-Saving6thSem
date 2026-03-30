@@ -1,42 +1,87 @@
 import json
 import boto3
 import os
-import uuid
+import hashlib
+from datetime import datetime
 
 s3_client = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION', 'ap-southeast-2'))
+
 S3_BUCKET = os.environ.get('S3_BUCKET', 'one4allthings')
+AUDIO_TABLE = os.environ.get('AUDIO_TABLE', 'AudioFiles')
 URL_EXPIRATION_SECONDS = 3600
+
+def generate_hash(file_name):
+    # Hash the file name combined with the current timestamp
+    timestamp_str = datetime.utcnow().isoformat()
+    raw_str = f"{file_name}-{timestamp_str}"
+    # Use sha256 to ensure robust collision avoidance
+    return hashlib.sha256(raw_str.encode('utf-8')).hexdigest()[:16] # Shortened for practicality
 
 def lambda_handler(event, context):
     """
     Generate an S3 pre-signed URL to upload audio files.
-    The user's identity is extracted from the Cognito Authorizer in API Gateway.
+    The user's identity is extracted from Cognito Authorizer.
+    It expects JSON payload from FE containing:
+    { "file_name": "meeting.mp3", "file_type": "audio/mpeg", "duration": 120, "title": "Quarterly Sync" }
     """
     try:
         # Extract sub (User ID) from API Gateway Cognito Authorizer context
         claims = event.get('requestContext', {}).get('authorizer', {}).get('claims', {})
         user_id = claims.get('sub')
         
-        # Fallback for local testing or unauthenticated usage if not strictly enforced
         if not user_id:
-            user_id = 'unauthenticated-user'
+            # Fallback block or strict return
+            user_id = 'unauthenticated-user' # Remove logic in production
             
-        # Get filename and content type from the query string
-        query_params = event.get('queryStringParameters', {}) or {}
-        file_name = query_params.get('file_name', f"{uuid.uuid4().hex}.mp3")
-        content_type = query_params.get('content_type', 'audio/mpeg')
+        # Parse Required Fields from FE Payload
+        body = json.loads(event.get('body', '{}'))
+        file_name = body.get('file_name')
+        file_type = body.get('file_type')
+        duration = body.get('duration')
+        title = body.get('title', file_name)
+
+        if not all([file_name, file_type, duration]):
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Missing required fields: file_name, file_type, or duration'})
+            }
+            
+        # Extract extension and generate safe Hash ID
+        _, ext = os.path.splitext(file_name)
+        hash_id = generate_hash(file_name)
+        new_file_name = f"{hash_id}{ext}"
         
-        # Enforce exactly the user's directory
-        object_key = f"raw_audio/{user_id}/{file_name}"
+        # Provision DB Record first
+        table = dynamodb.Table(AUDIO_TABLE)
         
-        # Generate the presigned URL via Boto3
-        # We use generate_presigned_url because we just want a simple PUT request
+        s3_audio_path = f"raw_audio/{user_id}/{new_file_name}"
+        
+        table.put_item(
+            Item={
+                "user_id": user_id,            # Partition Key
+                "file_id": hash_id,            # Sort Key
+                "created_at": datetime.utcnow().isoformat() + "Z",
+                "duration": duration,
+                "file_type": file_type,
+                "file_name": file_name,        # Original File Name
+                "title": title,                # Display Name
+                "s3_audio": f"s3://{S3_BUCKET}/{s3_audio_path}",
+                "s3_transcript": "",
+                "job_id": "",
+                "stage": "Uploading",
+                "status": "Pending",
+                "summary": ""
+            }
+        )
+        
+        # Generate the presigned URL
         url = s3_client.generate_presigned_url(
             'put_object',
             Params={
                 'Bucket': S3_BUCKET,
-                'Key': object_key,
-                'ContentType': content_type
+                'Key': s3_audio_path,
+                'ContentType': file_type
             },
             ExpiresIn=URL_EXPIRATION_SECONDS
         )
@@ -44,18 +89,18 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200,
             'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*' # Adjust in production
+                'Access-Control-Allow-Origin': '*'
             },
             'body': json.dumps({
                 'upload_url': url,
-                'file_key': object_key
+                'file_id': hash_id,
+                'renamed_file': new_file_name
             })
         }
         
     except Exception as e:
-        print(f"Error generating pre-signed URL: {e}")
+        print(f"Error generating presigned URL: {e}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': 'Could not generate upload URL.'})
+            'body': json.dumps({'error': 'Could not generate upload URL and initialize DB record.'})
         }
